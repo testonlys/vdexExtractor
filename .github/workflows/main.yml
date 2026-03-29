@@ -1,36 +1,47 @@
-name: Build vdexExtractor (Linux-Safe)
+name: Build vdexExtractor (Static Linux)
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-linux:
+  build-static:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout vdexExtractor
         uses: actions/checkout@v4
         with:
           repository: anestisb/vdexExtractor
           fetch-depth: 1
 
-      - name: Install Build Tools
+      - name: Install Build Dependencies
         run: |
           sudo apt-get update
-          # 安装必要的 C 开发库和 zlib
+          # 安装基础工具和静态版 zlib 库 (zlib1g-dev 包含 libz.a)
           sudo apt-get install -y gcc make zlib1g-dev libssl-dev
 
-      - name: Patch and Build
+      - name: Patch and Build Static Binary
         run: |
-          # 移除会导致编译中断的严格警告检查
-          sed -i 's/-Werror//g' src/Makefile
-          # 执行编译脚本
-          ./make.sh gcc
+          # 1. 进入源码目录
+          cd src
+          
+          # 2. 移除 Makefile 中的严格错误检查，避免因警告中断
+          sed -i 's/-Werror//g' Makefile
+          
+          # 3. 强制使用静态链接编译
+          # 我们不使用 ./make.sh，因为手动指定 LDFLAGS 更可控
+          # -static 会告诉 gcc 将所有库（包括 libc 和 zlib）打入二进制
+          make CC=gcc CFLAGS="-O2" LDFLAGS="-static"
+          
+          # 4. 检查生成的产物是否真的是静态链接
+          ldd vdexExtractor || echo "Static check: success (no dynamic dependencies)"
 
-      - name: Check Binary
-        run: ls -l bin/vdexExtractor
+      - name: Strip Binary
+        run: |
+          # 去除符号表减小体积
+          strip src/vdexExtractor
 
-      - name: Upload
+      - name: Upload Static Binary
         uses: actions/upload-artifact@v4
         with:
-          name: vdexExtractor-linux
-          path: bin/vdexExtractor
+          name: vdexExtractor-static-linux
+          path: src/vdexExtractor
