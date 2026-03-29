@@ -1,41 +1,36 @@
-name: Build vdexExtractor (Windows)
+name: Build vdexExtractor (Linux-Safe)
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           repository: anestisb/vdexExtractor
           fetch-depth: 1
 
-      - name: Install MinGW
+      - name: Install Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y mingw-w64 make
+          # 安装必要的 C 开发库和 zlib
+          sudo apt-get install -y gcc make zlib1g-dev libssl-dev
 
-      - name: Patch and Compile
+      - name: Patch and Build
         run: |
-          # 1. 去掉严格的错误检查
+          # 移除会导致编译中断的严格警告检查
           sed -i 's/-Werror//g' src/Makefile
-          
-          # 2. 调用交叉编译器 (x86_64-w64-mingw32-gcc)
-          # 注意：vdexExtractor 使用了一些 Linux 特有宏，这里强制指定编译器
-          cd src
-          make CC=x86_64-w64-mingw32-gcc LDFLAGS="-static"
-          
-      - name: Move Binary
-        run: |
-          mkdir -p bin_win
-          # 寻找编译生成的二进制并更名为 .exe
-          mv src/vdexExtractor bin_win/vdexExtractor.exe
+          # 执行编译脚本
+          ./make.sh gcc
 
-      - name: Upload EXE
+      - name: Check Binary
+        run: ls -l bin/vdexExtractor
+
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: vdexExtractor-windows-x64
-          path: bin_win/vdexExtractor.exe
+          name: vdexExtractor-linux
+          path: bin/vdexExtractor
