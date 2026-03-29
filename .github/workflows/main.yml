@@ -1,0 +1,41 @@
+name: Build vdexExtractor (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          repository: anestisb/vdexExtractor
+          fetch-depth: 1
+
+      - name: Install MinGW
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 make
+
+      - name: Patch and Compile
+        run: |
+          # 1. 去掉严格的错误检查
+          sed -i 's/-Werror//g' src/Makefile
+          
+          # 2. 调用交叉编译器 (x86_64-w64-mingw32-gcc)
+          # 注意：vdexExtractor 使用了一些 Linux 特有宏，这里强制指定编译器
+          cd src
+          make CC=x86_64-w64-mingw32-gcc LDFLAGS="-static"
+          
+      - name: Move Binary
+        run: |
+          mkdir -p bin_win
+          # 寻找编译生成的二进制并更名为 .exe
+          mv src/vdexExtractor bin_win/vdexExtractor.exe
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: vdexExtractor-windows-x64
+          path: bin_win/vdexExtractor.exe
