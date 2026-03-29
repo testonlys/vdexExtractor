@@ -30,7 +30,7 @@ jobs:
           # 3. 强制使用静态链接编译
           # 我们不使用 ./make.sh，因为手动指定 LDFLAGS 更可控
           # -static 会告诉 gcc 将所有库（包括 libc 和 zlib）打入二进制
-          make CC=gcc CFLAGS="-O2" LDFLAGS="-static"
+          make CC=gcc CFLAGS="-O2" LDFLAGS="-static -lz"
           
           # 4. 检查生成的产物是否真的是静态链接
           ldd vdexExtractor || echo "Static check: success (no dynamic dependencies)"
